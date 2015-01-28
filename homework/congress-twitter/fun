@@ -1,0 +1,5 @@
+echo 'hello'
+echo 'goodbye'
+
+seq 1 10
+echo 'heythere'
