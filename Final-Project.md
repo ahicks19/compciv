@@ -12,61 +12,23 @@ One of the more interesting things to notice, however, are the similarities betw
 After further research, I discovered that while it was quite as severe in California, North Carolina has actually been in a state of drought. On the other hand, Colorado, Michigan, and New York have been experiencing record low winter temperatures.
 While certain Republican officials might claim that this negates global warming ("but it can't be global warming...it's colder in New York!"), these are actually proof of climate change. Climate (global warming) affects weather (snowfall outside right now). When the climate changes, the weather changes. Global warming can cause both warm and cold spells, which obviously can and will affect snowfall. So if you want to go skiing, head to one of the cold states. It just might be too cold for you to go outside.
 
-I've put the links to the five charts below, as well as the HTML script for them. I put the JavaScript for them in a separate folder.
+I've put the links to the five charts below. I put the JavaScript and HTML scripts for them in separate folders.
 
 Links:
-<a href="http://jsfiddle.net/yadxt1vy/" target="_blank">Tahoe City</a> 
-<a href="http://jsfiddle.net/qdwwtp2v/" target="_blank">Jackson</a> 
-<a href="http://jsfiddle.net/vqaeqe3c/1/" target="_blank">Steamboat Springs</a>
-<a href="http://jsfiddle.net/jkw9t4uy/" target="_blank">Iron Mountain</a>
-<a href="http://jsfiddle.net/wnwguytw/" target="_blank">Grandfather Mountain</a>
-<a href="http://jsfiddle.net/r090zb3e/1/" target="_blank">Mohonk Lake</a>
+
+[Tahoe City, CA](http://jsfiddle.net/yadxt1vy/) 
+
+[Jackson, WY](http://jsfiddle.net/qdwwtp2v/)
+
+[Steamboat Springs, CO](http://jsfiddle.net/vqaeqe3c/1/)
+
+[Iron Mountain, MI](http://jsfiddle.net/jkw9t4uy/)
+
+[Grandfather Mountain, NC](http://jsfiddle.net/wnwguytw/)
+
+[Mohonk Lake, NY](http://jsfiddle.net/r090zb3e/1/)
 
 
-HTML:
-
-Tahoe - 
-
-<script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script>
-
-<div id="container" style="min-width: 300px; height: 400px; margin: 0 auto"></div>
-
-Jackson - 
-
-<script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script>
-
-<div id="container" style="min-width: 300px; height: 400px; margin: 0 auto"></div>
-
-Steamboat Springs - 
-
-<script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script>
-
-<div id="container" style="min-width: 300px; height: 400px; margin: 0 auto"></div>
-
-Iron Mountain - 
-
-<script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script>
-
-<div id="container" style="min-width: 300px; height: 400px; margin: 0 auto"></div>
-
-
-Grandfather Mountain - 
-
-<script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script>
-
-<div id="container" style="min-width: 300px; height: 400px; margin: 0 auto"></div>
-
-Mohonk Lake - 
-
-<script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script>
-
-<div id="container" style="min-width: 300px; height: 400px; margin: 0 auto"></div>
 
 
 
