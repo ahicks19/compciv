@@ -14,7 +14,7 @@ While certain Republican officials might claim that this negates global warming 
 
 I've put the links to the five charts below. I put the JavaScript and HTML scripts for them in separate folders.
 
-Links:
+##Links
 
 [Tahoe City, CA](http://jsfiddle.net/yadxt1vy/) 
 
