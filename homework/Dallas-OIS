@@ -1,0 +1,237 @@
+cd compciv/homework 
+
+mkdir dallas-ois
+cd dallas-ois
+mkdir data-hold 
+
+nano scraper.sh
+  
+curl -s "http://www.dallaspolice.net//ois/ois.html" -o "data-hold/ois.html"
+for snum in `seq 2003 2012`; do 
+if [[ ! -s "data-hold/$snum.html" ]]; then
+curl -s "http://www.dallaspolice.net//ois/ois_$snum.html" -o "data-hold/$snum.html"
+fi
+done
+cat data-hold/*.html | pup 'a attr{href}' | grep 'narrative' > urls.txt
+mkdir -p pdfs
+mv urls.txt pdfs
+cd pdfs
+allthings=$(cat urls.txt)
+mv urls.txt ..
+for x in $allthings; do 
+filename=$(basename $x | cut -d'.' --complement -f2-)
+if [[ ! -s "$filename.pdf" ]]; then
+echo 'I am downloading' http://www.dallaspolice.net$x
+curl http://www.dallaspolice.net/$x -O
+fi
+if [[ ! -s "$filename.txt" ]]; then
+pdftotext $filename.pdf
+fi
+done
+
+bash scraper.sh
+ 
+cd data-hold 
+ls
+cd ..
+mkdir tables
+nano geocoder.sh 
+ 
+ 
+mkdir -p data-hold/geodata
+if [[ -s tables/geocodes.psv ]]; then
+rm -f tables/geocodes.psv
+fi
+echo "location|latitude|longitude|" >> tables/geocodes.psv
+cat data-hold/*.html | pup 'table table tr json{}' | jq '.[] .children | { 
+case_pdf_href: .[0] .children[0] .href, 
+case_id: .[0] .children[0] .text, 
+date: .[1] .text ,
+address: .[2] .text,
+suspect_status: .[3] .text,
+suspect_weapons: .[4] .text,
+suspects: .[5] .text,
+officers: .[6] .text,
+grand_jury: .[7] .text
+}' | jq -r '.address' | grep -v "Location" | 
+while read -r x; do 
+addr=$(echo $x | tr ' ' '+')
+url="https://maps.googleapis.com/maps/api/geocode/json?address=$addr+Dallas+TX"
+if [[ -s "data-hold/geodata/$addr.json" ]]; then
+echo "Already Downloaded data-hold/geodata/$addr.json"
+else
+echo "Downloading $url"
+curl -s $url > data-hold/geodata/$addr.json
+sleep 3
+fi
+latitude=$(cat data-hold/geodata/$addr.json | jq '.results[0].geometry.location.lat')
+longitude=$(cat data-hold/geodata/$addr.json | jq '.results[0].geometry.location.lng')
+echo "$x|$latitude|$longitude" >> tables/geocodes.psv
+done
+
+bash geocoder.sh
+ 
+
+cd ..
+nano tablemaker.sh
+
+if [[ -s tables/incidents.psv ]]; then
+rm -f tables/incidents.psv
+fi
+if [[ -s tables/officers.psv ]]; then
+rm -f tables/officers.psv
+fi
+if [[ -s tables/suspects.psv ]]; then
+rm -f tables/suspects.psv
+fi
+echo "case_number|date|location|suspect_status|suspect_weapon|suspects|officers|grand_jury|latitude|longitude|narrative" >> tables/incidents.psv
+echo "case_number|date|suspect_killed|suspect_weapon|last_name|first_name|race|gender" >> tables/officers.psv
+echo "case_number|date|suspect_weapon|last_name|first_name" >> tables/suspects.psv
+cases=(`cat data-hold/*.html | pup 'table table tr json{}' | jq '.[] .children | { 
+case_pdf_href: .[0] .children[0] .href, 
+case_id: .[0] .children[0] .text, 
+date: .[1] .text ,
+address: .[2] .text,
+suspect_status: .[3] .text,
+suspect_weapons: .[4] .text,
+suspects: .[5] .text,
+officers: .[6] .text,
+grand_jury: .[7] .text
+}' | jq -r .case_id | grep -v null | tr "\n" " "`)
+for case_id in ${cases[*]}; do
+echo "Processing case $case_id"
+json_blob=`cat data-hold/*.html | pup 'table table tr json{}' | jq '.[] .children | { 
+case_pdf_href: .[0] .children[0] .href, 
+case_id: .[0] .children[0] .text, 
+date: .[1] .text ,
+address: .[2] .text,
+suspect_status: .[3] .text,
+suspect_weapons: .[4] .text,
+suspects: .[5] .text,
+officers: .[6] .text,
+grand_jury: .[7] .text
+}' | jq 'select(.case_id=="'${case_id}'")' `
+date=`echo $json_blob | jq -r .date`
+location=`echo $json_blob | jq -r .address`
+suspect_status=`echo $json_blob | jq -r .suspect_status`
+suspect_weapon=`echo $json_blob | jq -r .suspect_weapons`
+suspects=`echo $json_blob | jq -r .suspects`
+officers=`echo $json_blob | jq -r .officers`
+grand_jury=`echo $json_blob | jq -r .grand_jury`
+case_file_name=`echo $json_blob | jq -r .case_pdf_href`
+case_file_name=$(basename $case_file_name | cut -d'.' --complement -f2-)
+latitude=`grep "$location" tables/geocodes.psv | cut -d "|" -f 2`
+longitude=`grep "$location" tables/geocodes.psv | cut -d "|" -f 3`
+narrative=$(cat data-hold/pdfs/$case_file_name.txt | tr "\n" " " )
+echo "$case_id|$date|$location|$suspect_status|$suspect_weapon|$suspects|$officers|$grand_jury|$latitude|$longitude|$narrative" >> tables/incidents.psv
+
+echo $suspect_status | grep -q "DECEASED"
+if [[ $? -eq 0 ]]; then
+suspect_killed="TRUE"
+else
+suspect_killed="FALSE"
+fi
+slashes_found=$(echo $officers | grep -o "/" | wc -l)
+(( slashes_found-- ))
+for i in `seq 0 $slashes_found`; do
+
+first=`echo $officers | cut -d "/" -f $(($i + 1))`
+
+second=`echo $officers | cut -d "/" -f $(($i + 2))`
+last_name=`echo $first| cut -d "," -f 1 | sed 's/^[A-Z]\{1\} //'`
+first_name=`echo $first| cut -d "," -f 2 | sed 's/ [A-Z]\{1\}$//'`
+first_name=${first_name:1}
+race=`echo ${first:(-1)}`
+gender=`echo ${second:0:1}`
+done
+
+echo "$case_id|$date|$suspect_killed|$suspect_weapon|$last_name|$first_name|$race|$gender" >> tables/officers.psv
+
+slashes_found=$(echo $suspects | grep -o "/" | wc -l)
+(( slashes_found-- ))
+for i in `seq 0 $slashes_found`; do
+
+first=`echo $officers | cut -d "/" -f $(($i + 1))`
+
+second=`echo $officers | cut -d "/" -f $(($i + 2))`
+last_name=`echo $first| cut -d "," -f 1 | sed 's/^[A-Z]\{1\} //'`
+first_name=`echo $first| cut -d "," -f 2 | sed 's/ [A-Z]\{1\}$//'`
+first_name=${first_name:1}
+race=`echo ${first:(-1)}`
+gender=`echo ${second:0:1}`
+done
+
+echo "$case_id|$date|$suspect_weapon|$last_name|$first_name" >> tables/suspects.psv
+done
+ 
+
+bash tablemaker.sh
+
+cd tables
+ls
+  
+cd ..
+nano pagemaker.sh
+
+echo "<html>"
+echo "<head><title>DALLAS OIS</title></head>"
+echo "<body>"
+echo "<h2>Incidents:</h2>"
+echo "<table border=\"1\" bordercolor=\"black\" cellpadding=\"2\">"
+while read line
+do
+name=$line
+case_id=`echo $name | cut -d "|" -f 1`
+date=`echo $name | cut -d "|" -f 2`
+location=`echo $name | cut -d "|" -f 3`
+suspect_status=`echo $name | cut -d "|" -f 4`
+suspect_weapon=`echo $name | cut -d "|" -f 5`
+suspects=`echo $name | cut -d "|" -f 6`
+officers=`echo $name | cut -d "|" -f 7`
+grand_jury=`echo $name | cut -d "|" -f 8`
+latitude=`echo $name | cut -d "|" -f 9`
+longitude=`echo $name | cut -d "|" -f 10`
+narrative=`echo $name | cut -d "|" -f 11`
+echo "<tr><td>$case_id</td><td>$date</td><td>$location</td><td>$suspect_status</td><td>$suspect_weapon</td><td>$suspects</td><td>$officers</td><td>$grand_jury</td><td>$latitude</td><td>$longitude</td><td>$narrative</td></tr>"
+done < tables/incidents.psv
+echo "</table>"
+echo "<br /><br /><br /><br />"
+echo "<h2>Officers:</h2>"
+echo "<table border=\"1\" bordercolor=\"black\" cellpadding=\"2\">"
+while read line
+do
+name=$line
+case_id=`echo $name | cut -d "|" -f 1`
+date=`echo $name | cut -d "|" -f 2`
+suspect_killed=`echo $name | cut -d "|" -f 3`
+suspect_weapon=`echo $name | cut -d "|" -f 4`
+last_name=`echo $name | cut -d "|" -f 5`
+first_name=`echo $name | cut -d "|" -f 6`
+race=`echo $name | cut -d "|" -f 7`
+gender=`echo $name | cut -d "|" -f 8`
+echo "<tr><td>$case_id</td><td>$date</td><td>$suspect_killed</td><td>$suspect_weapon</td><td>$last_name</td><td>$first_name</td><td>$race</td><td>$gender</td></tr>"
+done < tables/officers.psv
+echo "</table>"
+echo "<br /><br /><br /><br />"
+echo "<h2>Suspectss:</h2>"
+echo "<table border=\"1\" bordercolor=\"black\" cellpadding=\"2\">"
+while read line
+do
+name=$line
+case_id=`echo $name | cut -d "|" -f 1`
+date=`echo $name | cut -d "|" -f 2`
+suspect_weapon=`echo $name | cut -d "|" -f 3`
+last_name=`echo $name | cut -d "|" -f 4`
+first_name=`echo $name | cut -d "|" -f 5`
+echo "<tr><td>$case_id</td><td>$date</td><td>$suspect_weapon</td><td>$last_name</td><td>$first_name</td></tr>"
+done < tables/suspects.psv
+echo "</table>"
+echo "</body>"
+echo "</html>"
+
+git add --all
+
+git commit -m 'Dallas OIS assignment.'
+
+git push
+
