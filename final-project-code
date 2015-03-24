@@ -1,0 +1,16 @@
+
+#!/bin/bash
+curl http://www.wrcc.dri.edu/cgi-bin/cliMONtsnf.pl?ca8758 | tidy -i -q --show-warnings 0 --show-errors 0 >> test.txt
+for ((i=3;i<=113;i++));
+do
+        cat test.txt | xmllint --html --xpath "/html/body/center[2]/table/tr[$i]/td[26]" - 2>/dev/null | perl -lne 'print $1 if /(\d+.\d{2})/'
+done
+
+vi getsnow.sh
+i ctrl-c (to paste the above code in)
+:wq
+chmod +x getsnow.sh
+./getsnow.sh
+
+
+Then to get the other cities I just had to change the "ca8758" to whatever the COOP ID was for whatever city I was looking for (I just old-school googled them)   
